@@ -4,9 +4,15 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    float playerHeight = 2f;
-
     [SerializeField] Transform orientation;
+
+    [Header("Crouching & Sliding")]
+    public float slideForce = 500;
+    public float slideCounterMovement = 0.2f;
+    private Vector3 crouchScale = new Vector3(1, 0.5f, 1);
+    private Vector3 playerScale;
+    bool crouching;
+    bool sliding;
 
     [Header("Movement")]
     public float moveSpeed = 6f;
@@ -24,6 +30,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Keybinds")]
     [SerializeField] KeyCode jumpKey = KeyCode.Space;
     [SerializeField] KeyCode sprintKey = KeyCode.LeftShift;
+    [SerializeField] KeyCode crouchKey = KeyCode.C;
 
     [Header("Drag")]
     float groundDrag = 6f;
@@ -44,9 +51,9 @@ public class PlayerMovement : MonoBehaviour
     Rigidbody rb;
 
     RaycastHit slopeHit;
-    private bool OnSlope()
+    public bool OnSlope()
     {
-        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight / 2 + 0.5f))
+        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, 2 / 2 + 0.5f))
         {
             if (slopeHit.normal != Vector3.up)
             {
@@ -64,6 +71,7 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+        playerScale = transform.localScale;
     }
 
     private void Update()
@@ -75,9 +83,7 @@ public class PlayerMovement : MonoBehaviour
         ControlSpeed();
 
         if (Input.GetKeyDown(jumpKey) && isGrounded)
-        {
             Jump();
-        }
 
         slopeMoveDirection = Vector3.ProjectOnPlane(moveDirection, slopeHit.normal);
     }
@@ -87,8 +93,45 @@ public class PlayerMovement : MonoBehaviour
         horizontalMovement = Input.GetAxisRaw("Horizontal");
         verticalMovement = Input.GetAxisRaw("Vertical");
 
+        crouching = Input.GetKey(crouchKey);
+        if (Input.GetKeyDown(crouchKey))
+            StartCrouch();
+        if (Input.GetKeyUp(crouchKey))
+            StopCrouch();
+
         moveDirection = orientation.forward * verticalMovement + orientation.right * horizontalMovement;
     }
+
+
+    void StartCrouch()
+    {
+        transform.localScale = crouchScale;
+        transform.position = new Vector3(transform.position.x, transform.position.y - 0.5f, transform.position.z);
+        if (rb.velocity.magnitude > 6f)
+        {
+            if (isGrounded)
+            {
+                sliding = true;
+                Debug.Log("Sliding");
+                //tilt = Mathf.Lerp(tilt, camTilt, camTiltTime * Time.deltaTime);
+            }
+        }
+        else
+        {
+            sliding = false;
+            Debug.Log("Crouching");
+        }
+    }
+
+
+    void StopCrouch()
+    {
+        transform.localScale = playerScale;
+        transform.position = new Vector3(transform.position.x, transform.position.y + 0.5f, transform.position.z);
+
+        Debug.Log("Stop Croching");
+    }
+
 
     void Jump()
     {
@@ -127,6 +170,17 @@ public class PlayerMovement : MonoBehaviour
 
     void MovePlayer()
     {
+        if(crouching && sliding)
+        {
+            //Need to learn how to do this.
+            rb.AddForce(orientation.transform.forward * slideForce);
+        }
+        else if(crouching && !sliding)
+        {
+            rb.AddForce(moveSpeed * -rb.velocity.normalized * slideCounterMovement * 30f);
+        }
+
+
         if (isGrounded && !OnSlope())
         {
             rb.AddForce(moveDirection.normalized * moveSpeed * movementMultiplier, ForceMode.Acceleration);
@@ -134,11 +188,11 @@ public class PlayerMovement : MonoBehaviour
         else if (isGrounded && OnSlope())
         {
             rb.AddForce(slopeMoveDirection.normalized * moveSpeed * movementMultiplier, ForceMode.Acceleration);
-
         }
         else if (!isGrounded)
         {
             rb.AddForce(moveDirection.normalized * moveSpeed * movementMultiplier * airMultiplier, ForceMode.Acceleration);
         }
+
     }
 }

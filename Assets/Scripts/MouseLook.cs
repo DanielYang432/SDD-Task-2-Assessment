@@ -7,7 +7,6 @@ public class MouseLook : MonoBehaviour
     [Header("References")]
     [SerializeField] WallRun wallRun;
 
-
     [SerializeField] private float sensX;
     [SerializeField] private float sensY;
 
