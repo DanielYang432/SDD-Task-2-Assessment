@@ -7,12 +7,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] Transform orientation;
 
     [Header("Crouching & Sliding")]
-    public float slideForce = 500;
+    public float slideForce = 20f;
     public float slideCounterMovement = 0.2f;
     private Vector3 crouchScale = new Vector3(1, 0.5f, 1);
     private Vector3 playerScale;
-    bool crouching;
-    bool sliding;
+    public float boostForce = 100f;
+    public bool canUncrouch;
+    public bool crouching;
+    public bool sliding;
 
     [Header("Movement")]
     public float moveSpeed = 6f;
@@ -67,12 +69,14 @@ public class PlayerMovement : MonoBehaviour
         return false;
     }
 
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         playerScale = transform.localScale;
     }
+
 
     private void Update()
     {
@@ -85,20 +89,31 @@ public class PlayerMovement : MonoBehaviour
         if (Input.GetKeyDown(jumpKey) && isGrounded)
             Jump();
 
-        slopeMoveDirection = Vector3.ProjectOnPlane(moveDirection, slopeHit.normal);
+    slopeMoveDirection = Vector3.ProjectOnPlane(moveDirection, slopeHit.normal);
     }
+
 
     void MyInput()
     {
         horizontalMovement = Input.GetAxisRaw("Horizontal");
         verticalMovement = Input.GetAxisRaw("Vertical");
 
-        crouching = Input.GetKey(crouchKey);
-        if (Input.GetKeyDown(crouchKey))
+        if (Input.GetKeyDown(crouchKey) && isGrounded)
+        {
             StartCrouch();
-        if (Input.GetKeyUp(crouchKey))
-            StopCrouch();
+            canUncrouch = true;
+        }
 
+        if (Input.GetKeyUp(crouchKey))
+        {
+            if (isGrounded)
+                StopCrouch();
+            else if (!isGrounded && canUncrouch)
+            {
+                StopCrouch();
+                canUncrouch = false;
+            }
+        }
         moveDirection = orientation.forward * verticalMovement + orientation.right * horizontalMovement;
     }
 
@@ -107,29 +122,26 @@ public class PlayerMovement : MonoBehaviour
     {
         transform.localScale = crouchScale;
         transform.position = new Vector3(transform.position.x, transform.position.y - 0.5f, transform.position.z);
-        if (rb.velocity.magnitude > 6f)
+        if (rb.velocity.magnitude > 8f)
         {
-            if (isGrounded)
-            {
-                sliding = true;
-                Debug.Log("Sliding");
-                //tilt = Mathf.Lerp(tilt, camTilt, camTiltTime * Time.deltaTime);
-            }
-        }
+            rb.AddForce(rb.velocity.normalized * boostForce, ForceMode.Impulse);
+            sliding = true;
+            crouching = false;
+        }  
         else
         {
+            crouching = true;
             sliding = false;
-            Debug.Log("Crouching");
         }
     }
 
 
     void StopCrouch()
     {
+        crouching = false;
+        sliding = false;        
         transform.localScale = playerScale;
         transform.position = new Vector3(transform.position.x, transform.position.y + 0.5f, transform.position.z);
-
-        Debug.Log("Stop Croching");
     }
 
 
@@ -138,6 +150,7 @@ public class PlayerMovement : MonoBehaviour
         rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
+
 
     void ControlDrag()
     {
@@ -151,6 +164,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+
     void ControlSpeed()
     {
         if (Input.GetKey(sprintKey) && isGrounded)
@@ -163,23 +177,26 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+
     private void FixedUpdate()
     {
         MovePlayer();
     }
 
+
     void MovePlayer()
     {
-        if(crouching && sliding)
+
+
+        if (sliding && isGrounded)
         {
-            //Need to learn how to do this.
-            rb.AddForce(orientation.transform.forward * slideForce);
+            //Need to learn how to do this
+            rb.AddForce(-rb.velocity.normalized * slideForce, ForceMode.Acceleration);
         }
-        else if(crouching && !sliding)
+        else if (crouching && isGrounded)
         {
             rb.AddForce(moveSpeed * -rb.velocity.normalized * slideCounterMovement * 30f);
         }
-
 
         if (isGrounded && !OnSlope())
         {
@@ -193,6 +210,5 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.AddForce(moveDirection.normalized * moveSpeed * movementMultiplier * airMultiplier, ForceMode.Acceleration);
         }
-
     }
 }

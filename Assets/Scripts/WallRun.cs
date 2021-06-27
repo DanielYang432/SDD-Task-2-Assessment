@@ -51,8 +51,7 @@ public class WallRun : MonoBehaviour
         wallRight = Physics.Raycast(transform.position, orientation.right, out rightWallHit, wallDistance, wallMask);
     }
 
-
-    private void Update()
+    private void FixedUpdate()
     {
         CheckWall();
 
@@ -79,23 +78,40 @@ public class WallRun : MonoBehaviour
         }
     }
 
+
+
+    private void Update()
+    {
+
+        if (CanWallRun())
+        {
+            JumpOffWall();
+        }
+
+    }
+
     void StartWallRun()
     {
         rb.useGravity = false;
 
         rb.AddForce(Vector3.down * wallRunGravity, ForceMode.Force);
 
-        cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, wallRunfov, wallRunfovTime * Time.deltaTime);
 
         if (wallLeft)
         {
             tilt = Mathf.Lerp(tilt, -camTilt, camTiltTime * Time.deltaTime);
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, wallRunfov, wallRunfovTime * Time.deltaTime);
         }
         else if (wallRight)
         {
             tilt = Mathf.Lerp(tilt, camTilt, camTiltTime * Time.deltaTime);
-
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, wallRunfov, wallRunfovTime * Time.deltaTime);
         }
+
+    }
+
+    void JumpOffWall()
+    {
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -117,7 +133,6 @@ public class WallRun : MonoBehaviour
     void StopWallRun()
     {
         rb.useGravity = true;
-
         cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, fov, wallRunfovTime * Time.deltaTime);
 
         tilt = Mathf.Lerp(tilt, 0 , camTiltTime * Time.deltaTime);
